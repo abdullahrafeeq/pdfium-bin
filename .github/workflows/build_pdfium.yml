@@ -1,1 +1,43 @@
 
+name: Build PDFium
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        choco install python3
+        choco install ninja
+        choco install cmake
+        choco install visualstudio2019buildtools --include-optional
+
+    - name: Fetch PDFium Source
+      run: |
+        git clone https://pdfium.googlesource.com/pdfium src
+        cd src
+        gclient sync
+
+    - name: Build PDFium
+      run: |
+        set DEPOT_TOOLS_WIN_TOOLCHAIN=0
+        set GYP_MSVS_VERSION=2019
+        cd src
+        gn gen out/Default --args='is_debug=false target_os="win" target_cpu="x64"'
+        ninja -C out/Default pdfium
+
+    - name: Upload PDFium.dll
+      uses: actions/upload-artifact@v3
+      with:
+        name: pdfium-dll
+        path: src/out/Default/pdfium.dll
